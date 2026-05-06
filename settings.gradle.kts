@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "hmac-kotlin"
+
