@@ -1,203 +1,132 @@
 // port-lint: source tests/mod.rs
 package io.github.kotlinmania.hmac
 
+import io.github.kotlinmania.digest.newMacTest
+import io.github.kotlinmania.digest.truncLeft
+import io.github.kotlinmania.md5.Md5
+import io.github.kotlinmania.sha1.Sha1
+import io.github.kotlinmania.sha2.Sha224
+import io.github.kotlinmania.sha2.Sha256
+import io.github.kotlinmania.sha2.Sha384
+import io.github.kotlinmania.sha2.Sha512
+import io.github.kotlinmania.streebog.Streebog256
+import io.github.kotlinmania.streebog.Streebog512
 import kotlin.test.Test
-import kotlin.test.assertEquals
 
 class ModTest {
+    // Test vectors from RFC 2104, plus wiki test
     @Test
-    fun upstreamMacTestInventoryIsPorted() {
-        assertEquals(22, MAC_TESTS.size)
-        assertMacTestCase("hmacMd5Rfc2104", "md5", HmacImplementation.Hmac, "Md5", Truncation.None)
-        assertMacTestCase(
-            "hmacMd5Rfc2104Simple",
-            "md5",
-            HmacImplementation.SimpleHmac,
-            "Md5",
-            Truncation.None,
-        )
-        assertMacTestCase("hmacSha224Rfc4231", "sha224", HmacImplementation.Hmac, "Sha224", Truncation.None)
-        assertMacTestCase("hmacSha256Rfc4231", "sha256", HmacImplementation.Hmac, "Sha256", Truncation.None)
-        assertMacTestCase("hmacSha384Rfc4231", "sha384", HmacImplementation.Hmac, "Sha384", Truncation.None)
-        assertMacTestCase("hmacSha512Rfc4231", "sha512", HmacImplementation.Hmac, "Sha512", Truncation.None)
-        assertMacTestCase(
-            "hmacSha224Rfc4231Simple",
-            "sha224",
-            HmacImplementation.SimpleHmac,
-            "Sha224",
-            Truncation.None,
-        )
-        assertMacTestCase(
-            "hmacSha256Rfc4231Simple",
-            "sha256",
-            HmacImplementation.SimpleHmac,
-            "Sha256",
-            Truncation.None,
-        )
-        assertMacTestCase(
-            "hmacSha384Rfc4231Simple",
-            "sha384",
-            HmacImplementation.SimpleHmac,
-            "Sha384",
-            Truncation.None,
-        )
-        assertMacTestCase(
-            "hmacSha512Rfc4231Simple",
-            "sha512",
-            HmacImplementation.SimpleHmac,
-            "Sha512",
-            Truncation.None,
-        )
-        assertMacTestCase("hmacStreebog256", "streebog256", HmacImplementation.Hmac, "Streebog256", Truncation.None)
-        assertMacTestCase("hmacStreebog512", "streebog512", HmacImplementation.Hmac, "Streebog512", Truncation.None)
-        assertMacTestCase(
-            "hmacStreebog256Simple",
-            "streebog256",
-            HmacImplementation.SimpleHmac,
-            "Streebog256",
-            Truncation.None,
-        )
-        assertMacTestCase(
-            "hmacStreebog512Simple",
-            "streebog512",
-            HmacImplementation.SimpleHmac,
-            "Streebog512",
-            Truncation.None,
-        )
-        assertMacTestCase("hmacSha1Wycheproof", "wycheproof-sha1", HmacImplementation.Hmac, "Sha1", Truncation.Left)
-        assertMacTestCase(
-            "hmacSha256Wycheproof",
-            "wycheproof-sha256",
-            HmacImplementation.Hmac,
-            "Sha256",
-            Truncation.Left,
-        )
-        assertMacTestCase(
-            "hmacSha384Wycheproof",
-            "wycheproof-sha384",
-            HmacImplementation.Hmac,
-            "Sha384",
-            Truncation.Left,
-        )
-        assertMacTestCase(
-            "hmacSha512Wycheproof",
-            "wycheproof-sha512",
-            HmacImplementation.Hmac,
-            "Sha512",
-            Truncation.Left,
-        )
-        assertMacTestCase(
-            "hmacSha1WycheproofSimple",
-            "wycheproof-sha1",
-            HmacImplementation.SimpleHmac,
-            "Sha1",
-            Truncation.Left,
-        )
-        assertMacTestCase(
-            "hmacSha256WycheproofSimple",
-            "wycheproof-sha256",
-            HmacImplementation.SimpleHmac,
-            "Sha256",
-            Truncation.Left,
-        )
-        assertMacTestCase(
-            "hmacSha384WycheproofSimple",
-            "wycheproof-sha384",
-            HmacImplementation.SimpleHmac,
-            "Sha384",
-            Truncation.Left,
-        )
-        assertMacTestCase(
-            "hmacSha512WycheproofSimple",
-            "wycheproof-sha512",
-            HmacImplementation.SimpleHmac,
-            "Sha512",
-            Truncation.Left,
-        )
+    fun hmacMd5Rfc2104() {
+        newMacTest<Hmac<Md5>>("md5")
     }
 
-    // Test vectors from RFC 2104, plus wiki test.
-    // hmacMd5Rfc2104
-    // hmacMd5Rfc2104Simple
+    @Test
+    fun hmacMd5Rfc2104Simple() {
+        newMacTest<SimpleHmac<Md5>>("md5")
+    }
 
-    // Test vectors from RFC 4231.
-    // hmacSha224Rfc4231
-    // hmacSha256Rfc4231
-    // hmacSha384Rfc4231
-    // hmacSha512Rfc4231
-    // hmacSha224Rfc4231Simple
-    // hmacSha256Rfc4231Simple
-    // hmacSha384Rfc4231Simple
-    // hmacSha512Rfc4231Simple
+    // Test vectors from RFC 4231
+    @Test
+    fun hmacSha224Rfc4231() {
+        newMacTest<Hmac<Sha224>>("sha224")
+    }
+
+    @Test
+    fun hmacSha256Rfc4231() {
+        newMacTest<Hmac<Sha256>>("sha256")
+    }
+
+    @Test
+    fun hmacSha384Rfc4231() {
+        newMacTest<Hmac<Sha384>>("sha384")
+    }
+
+    @Test
+    fun hmacSha512Rfc4231() {
+        newMacTest<Hmac<Sha512>>("sha512")
+    }
+
+    @Test
+    fun hmacSha224Rfc4231Simple() {
+        newMacTest<SimpleHmac<Sha224>>("sha224")
+    }
+
+    @Test
+    fun hmacSha256Rfc4231Simple() {
+        newMacTest<SimpleHmac<Sha256>>("sha256")
+    }
+
+    @Test
+    fun hmacSha384Rfc4231Simple() {
+        newMacTest<SimpleHmac<Sha384>>("sha384")
+    }
+
+    @Test
+    fun hmacSha512Rfc4231Simple() {
+        newMacTest<SimpleHmac<Sha512>>("sha512")
+    }
 
     // Test vectors from R 50.1.113-2016:
     // https://tc26.ru/standard/rs/Р 50.1.113-2016.pdf
-    // hmacStreebog256
-    // hmacStreebog512
-    // hmacStreebog256Simple
-    // hmacStreebog512Simple
+    @Test
+    fun hmacStreebog256() {
+        newMacTest<Hmac<Streebog256>>("streebog256")
+    }
+
+    @Test
+    fun hmacStreebog512() {
+        newMacTest<Hmac<Streebog512>>("streebog512")
+    }
+
+    @Test
+    fun hmacStreebog256Simple() {
+        newMacTest<SimpleHmac<Streebog256>>("streebog256")
+    }
+
+    @Test
+    fun hmacStreebog512Simple() {
+        newMacTest<SimpleHmac<Streebog512>>("streebog512")
+    }
 
     // Tests from Project Wycheproof:
     // https://github.com/google/wycheproof
-    // hmacSha1Wycheproof
-    // hmacSha256Wycheproof
-    // hmacSha384Wycheproof
-    // hmacSha512Wycheproof
-    // hmacSha1WycheproofSimple
-    // hmacSha256WycheproofSimple
-    // hmacSha384WycheproofSimple
-    // hmacSha512WycheproofSimple
+    @Test
+    fun hmacSha1Wycheproof() {
+        newMacTest<Hmac<Sha1>>("wycheproof-sha1", ::truncLeft)
+    }
 
-    private fun assertMacTestCase(
-        name: String,
-        vector: String,
-        implementation: HmacImplementation,
-        digest: String,
-        truncation: Truncation,
-    ) {
-        assertEquals(MacTest(name, vector, implementation, digest, truncation), MAC_TESTS.single { it.name == name })
+    @Test
+    fun hmacSha256Wycheproof() {
+        newMacTest<Hmac<Sha256>>("wycheproof-sha256", ::truncLeft)
+    }
+
+    @Test
+    fun hmacSha384Wycheproof() {
+        newMacTest<Hmac<Sha384>>("wycheproof-sha384", ::truncLeft)
+    }
+
+    @Test
+    fun hmacSha512Wycheproof() {
+        newMacTest<Hmac<Sha512>>("wycheproof-sha512", ::truncLeft)
+    }
+
+    @Test
+    fun hmacSha1WycheproofSimple() {
+        newMacTest<SimpleHmac<Sha1>>("wycheproof-sha1", ::truncLeft)
+    }
+
+    @Test
+    fun hmacSha256WycheproofSimple() {
+        newMacTest<SimpleHmac<Sha256>>("wycheproof-sha256", ::truncLeft)
+    }
+
+    @Test
+    fun hmacSha384WycheproofSimple() {
+        newMacTest<SimpleHmac<Sha384>>("wycheproof-sha384", ::truncLeft)
+    }
+
+    @Test
+    fun hmacSha512WycheproofSimple() {
+        newMacTest<SimpleHmac<Sha512>>("wycheproof-sha512", ::truncLeft)
     }
 }
-
-private enum class HmacImplementation {
-    Hmac,
-    SimpleHmac,
-}
-
-private enum class Truncation {
-    None,
-    Left,
-}
-
-private data class MacTest(
-    val name: String,
-    val vector: String,
-    val implementation: HmacImplementation,
-    val digest: String,
-    val truncation: Truncation = Truncation.None,
-)
-
-private val MAC_TESTS: List<MacTest> = listOf(
-    MacTest("hmacMd5Rfc2104", "md5", HmacImplementation.Hmac, "Md5"),
-    MacTest("hmacMd5Rfc2104Simple", "md5", HmacImplementation.SimpleHmac, "Md5"),
-    MacTest("hmacSha224Rfc4231", "sha224", HmacImplementation.Hmac, "Sha224"),
-    MacTest("hmacSha256Rfc4231", "sha256", HmacImplementation.Hmac, "Sha256"),
-    MacTest("hmacSha384Rfc4231", "sha384", HmacImplementation.Hmac, "Sha384"),
-    MacTest("hmacSha512Rfc4231", "sha512", HmacImplementation.Hmac, "Sha512"),
-    MacTest("hmacSha224Rfc4231Simple", "sha224", HmacImplementation.SimpleHmac, "Sha224"),
-    MacTest("hmacSha256Rfc4231Simple", "sha256", HmacImplementation.SimpleHmac, "Sha256"),
-    MacTest("hmacSha384Rfc4231Simple", "sha384", HmacImplementation.SimpleHmac, "Sha384"),
-    MacTest("hmacSha512Rfc4231Simple", "sha512", HmacImplementation.SimpleHmac, "Sha512"),
-    MacTest("hmacStreebog256", "streebog256", HmacImplementation.Hmac, "Streebog256"),
-    MacTest("hmacStreebog512", "streebog512", HmacImplementation.Hmac, "Streebog512"),
-    MacTest("hmacStreebog256Simple", "streebog256", HmacImplementation.SimpleHmac, "Streebog256"),
-    MacTest("hmacStreebog512Simple", "streebog512", HmacImplementation.SimpleHmac, "Streebog512"),
-    MacTest("hmacSha1Wycheproof", "wycheproof-sha1", HmacImplementation.Hmac, "Sha1", Truncation.Left),
-    MacTest("hmacSha256Wycheproof", "wycheproof-sha256", HmacImplementation.Hmac, "Sha256", Truncation.Left),
-    MacTest("hmacSha384Wycheproof", "wycheproof-sha384", HmacImplementation.Hmac, "Sha384", Truncation.Left),
-    MacTest("hmacSha512Wycheproof", "wycheproof-sha512", HmacImplementation.Hmac, "Sha512", Truncation.Left),
-    MacTest("hmacSha1WycheproofSimple", "wycheproof-sha1", HmacImplementation.SimpleHmac, "Sha1", Truncation.Left),
-    MacTest("hmacSha256WycheproofSimple", "wycheproof-sha256", HmacImplementation.SimpleHmac, "Sha256", Truncation.Left),
-    MacTest("hmacSha384WycheproofSimple", "wycheproof-sha384", HmacImplementation.SimpleHmac, "Sha384", Truncation.Left),
-    MacTest("hmacSha512WycheproofSimple", "wycheproof-sha512", HmacImplementation.SimpleHmac, "Sha512", Truncation.Left),
-)
