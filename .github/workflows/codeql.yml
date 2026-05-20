@@ -21,12 +21,11 @@ name: "CodeQL Advanced"
 #      JAVA_TOOL_OPTIONS=-javaagent:codeql-java-agent.jar=java,kotlin.
 #
 # `codeqlCompileJvm` is a JavaExec task in build.gradle.kts that runs
-# kotlin-compiler-embeddable 2.3.20 against commonMain as a single-target
-# compile. A plain KMP compile on Kotlin 2.3.21 can bypass the
-# K2JVMCompiler.doExecute method the CodeQL Java agent hooks, producing
-# a fake-green database with no Kotlin TRAP. That's why this file uses
-# `build-mode: manual` for java-kotlin even though autobuild is the
-# template default.
+# kotlin-compiler-embeddable 2.3.21 against commonMain as a single-target
+# compile. The direct task keeps CodeQL's java-kotlin extraction surface
+# explicit while staying on the same Kotlin compiler version as the repo's
+# KMP build. That's why this file uses `build-mode: manual` for java-kotlin
+# even though autobuild is the template default.
 
 on:
   schedule:
