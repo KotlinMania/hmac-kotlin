@@ -195,10 +195,18 @@ kotlin {
         binaries.framework { baseName = "Hmac"; xcf.add(this) }
     }
     iosSimulatorArm64 {
-        binaries.framework { baseName = "Hmac"; xcf.add(this) }
+        binaries.framework {
+            baseName = "Hmac"
+            isStatic = true
+            xcf.add(this)
+        }
     }
     iosX64 {
-        binaries.framework { baseName = "Hmac"; xcf.add(this) }
+        binaries.framework {
+            baseName = "Hmac"
+            isStatic = true
+            xcf.add(this)
+        }
     }
 
     tvosArm64 {
