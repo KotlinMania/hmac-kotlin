@@ -1,7 +1,6 @@
 {
   "type": "kotlin",
   "name": "hmac-kotlin",
-  "parity_mode": false,
   "tool": "../bin/ast_distance",
   "source": {
     "path": "tmp/hmac/src",
