@@ -51,6 +51,16 @@ val androidSdkManager = projectAndroidSdkDir.resolve(
     },
 )
 val androidSdkInstallMarker = projectAndroidSdkDir.resolve(".install-complete")
+val requiredAndroidSdkPackageDirs = listOf(
+    projectAndroidSdkDir.resolve("platform-tools"),
+    projectAndroidSdkDir.resolve("platforms/android-$projectCompileSdk"),
+    projectAndroidSdkDir.resolve("build-tools/$projectAndroidBuildTools"),
+)
+
+fun isProjectAndroidSdkInstalled(): Boolean =
+    androidSdkInstallMarker.exists() &&
+        androidSdkManager.exists() &&
+        requiredAndroidSdkPackageDirs.all { it.exists() }
 
 fun writeAndroidLocalProperties() {
     val sdkDirPropertyValue = projectAndroidSdkDir.absolutePath.replace("\\", "/")
@@ -115,9 +125,9 @@ fun downloadAndroidCommandLineTools() {
 }
 
 fun installProjectAndroidSdk(execOperations: ExecOperations) {
-    if (androidSdkInstallMarker.exists() && androidSdkManager.exists()) {
+    if (isProjectAndroidSdkInstalled()) {
         writeAndroidLocalProperties()
-        println("setup-android-sdk: SDK already installed at $projectAndroidSdkDir")
+        println("setup-android-sdk: required SDK packages already installed at $projectAndroidSdkDir")
         return
     }
 
@@ -277,11 +287,16 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.4.0")
+                implementation("io.github.kotlinmania:digest-kotlin:0.1.0")
             }
         }
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                implementation("io.github.kotlinmania:md5-kotlin:0.1.0")
+                implementation("io.github.kotlinmania:sha1-kotlin:0.1.0")
+                implementation("io.github.kotlinmania:sha2-kotlin:0.1.0")
+                implementation("io.github.kotlinmania:streebog-kotlin:0.1.0")
             }
         }
 
@@ -434,6 +449,7 @@ dependencies {
     codeqlSourceClasspath("org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.11.0")
     codeqlSourceClasspath("org.jetbrains.kotlinx:kotlinx-datetime-jvm:0.8.0")
     codeqlSourceClasspath("org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:0.4.0")
+    codeqlSourceClasspath("io.github.kotlinmania:digest-kotlin-jvm:0.1.0")
 }
 
 val codeqlCompileJvm = tasks.register<JavaExec>("codeqlCompileJvm") {
