@@ -15,6 +15,7 @@ import io.github.kotlinmania.digest.HashMarker
 import io.github.kotlinmania.digest.InvalidLength
 import io.github.kotlinmania.digest.Key
 import io.github.kotlinmania.digest.KeyInit
+import io.github.kotlinmania.digest.KeySizeUser
 import io.github.kotlinmania.digest.MacMarker
 import io.github.kotlinmania.digest.Output
 import io.github.kotlinmania.digest.OutputSizeUser
