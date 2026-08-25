@@ -31,172 +31,176 @@ import kotlin.reflect.KClass
 /**
  * Generic HMAC instance using block-level core optimization.
  */
-class Hmac<D : Any> @PublishedApi internal constructor(
-    @PublishedApi internal val wrapper: CoreWrapper<HmacCore<D>>,
-) : Mac,
-    KeyInit<Hmac<D>>,
-    Update,
-    FixedOutput,
-    FixedOutputReset,
-    Reset,
-    OutputSizeUser,
-    BlockSizeUser,
-    MacMarker,
-    CoreProxy {
-    override val core: Any get() = wrapper.core
+class Hmac<D : Any>
+    @PublishedApi
+    internal constructor(
+        @PublishedApi internal val wrapper: CoreWrapper<HmacCore<D>>,
+    ) : Mac,
+        KeyInit<Hmac<D>>,
+        Update,
+        FixedOutput,
+        FixedOutputReset,
+        Reset,
+        OutputSizeUser,
+        BlockSizeUser,
+        MacMarker,
+        CoreProxy {
+        override val core: Any get() = wrapper.core
 
-    override val outputSize: Int get() = wrapper.outputSize
+        override val outputSize: Int get() = wrapper.outputSize
 
-    override val blockSize: Int get() = wrapper.blockSize
+        override val blockSize: Int get() = wrapper.blockSize
 
-    override fun new(key: Key<*>): Hmac<D> = newFromSlice(key).getOrThrow()
+        override fun new(key: Key<*>): Hmac<D> = newFromSlice(key).getOrThrow()
 
-    override fun newFromSlice(key: ByteArray): Result<Hmac<D>> {
-        @Suppress("UNCHECKED_CAST")
-        val core = wrapper.core as HmacCore<D>
-        return core.newFromSlice(key).map { Hmac(CoreWrapper.fromCore(it)) }
+        override fun newFromSlice(key: ByteArray): Result<Hmac<D>> {
+            @Suppress("UNCHECKED_CAST")
+            val core = wrapper.core as HmacCore<D>
+            return core.newFromSlice(key).map { Hmac(CoreWrapper.fromCore(it)) }
+        }
+
+        override fun update(data: ByteArray) {
+            wrapper.update(data)
+        }
+
+        override fun chain(data: ByteArray): Hmac<D> {
+            update(data)
+            return this
+        }
+
+        override fun finalize(): CtOutput<*> = CtOutput.new<Hmac<D>>(wrapper.finalizeFixed())
+
+        override fun finalizeReset(): CtOutput<*> = CtOutput.new<Hmac<D>>(wrapper.finalizeFixedReset())
+
+        override fun finalizeInto(out: Output<*>) {
+            wrapper.finalizeInto(out)
+        }
+
+        override fun finalizeIntoReset(out: Output<*>) {
+            wrapper.finalizeIntoReset(out)
+        }
+
+        override fun finalizeFixed(): ByteArray = wrapper.finalizeFixed()
+
+        override fun finalizeFixedReset(): ByteArray = wrapper.finalizeFixedReset()
+
+        override fun reset() {
+            wrapper.reset()
+        }
+
+        companion object {
+            inline fun <reified D : Any> new(key: ByteArray): Hmac<D> = newFromSlice<D>(key).getOrThrow()
+
+            inline fun <reified D : Any> newFromSlice(key: ByteArray): Result<Hmac<D>> =
+                HmacCore.newFromSlice<D>(key).map { Hmac(CoreWrapper.fromCore(it)) }
+
+            fun <D : Any> newFromSlice(
+                type: KClass<D>,
+                key: ByteArray,
+            ): Result<Hmac<D>> = HmacCore.newFromSlice(type, key).map { Hmac(CoreWrapper.fromCore(it)) }
+        }
     }
-
-    override fun update(data: ByteArray) {
-        wrapper.update(data)
-    }
-
-    override fun chain(data: ByteArray): Hmac<D> {
-        update(data)
-        return this
-    }
-
-    override fun finalize(): CtOutput<*> = CtOutput.new<Hmac<D>>(wrapper.finalizeFixed())
-
-    override fun finalizeReset(): CtOutput<*> = CtOutput.new<Hmac<D>>(wrapper.finalizeFixedReset())
-
-    override fun finalizeInto(out: Output<*>) {
-        wrapper.finalizeInto(out)
-    }
-
-    override fun finalizeIntoReset(out: Output<*>) {
-        wrapper.finalizeIntoReset(out)
-    }
-
-    override fun finalizeFixed(): ByteArray = wrapper.finalizeFixed()
-
-    override fun finalizeFixedReset(): ByteArray = wrapper.finalizeFixedReset()
-
-    override fun reset() {
-        wrapper.reset()
-    }
-
-    companion object {
-        inline fun <reified D : Any> new(key: ByteArray): Hmac<D> = newFromSlice<D>(key).getOrThrow()
-
-        inline fun <reified D : Any> newFromSlice(key: ByteArray): Result<Hmac<D>> =
-            HmacCore.newFromSlice<D>(key).map { Hmac(CoreWrapper.fromCore(it)) }
-
-        fun <D : Any> newFromSlice(
-            type: KClass<D>,
-            key: ByteArray,
-        ): Result<Hmac<D>> = HmacCore.newFromSlice(type, key).map { Hmac(CoreWrapper.fromCore(it)) }
-    }
-}
 
 /**
  * Core HMAC implementation working over block-level operations.
  */
-class HmacCore<D : Any> @PublishedApi internal constructor(
-    private val type: KClass<D>,
-    private val adapter: HasherAdapter,
-    private val opadKey: ByteArray,
-    private val ipadKey: ByteArray,
-    private var digest: Any,
-) : MacMarker,
-    BufferKindUser,
-    KeySizeUser,
-    BlockSizeUser,
-    OutputSizeUser,
-    KeyInit<HmacCore<D>>,
-    UpdateCore,
-    FixedOutputCore,
-    Reset,
-    AlgorithmName,
-    CoreProxy {
-    override val core: Any get() = this
+class HmacCore<D : Any>
+    @PublishedApi
+    internal constructor(
+        private val type: KClass<D>,
+        private val adapter: HasherAdapter,
+        private val opadKey: ByteArray,
+        private val ipadKey: ByteArray,
+        private var digest: Any,
+    ) : MacMarker,
+        BufferKindUser,
+        KeySizeUser,
+        BlockSizeUser,
+        OutputSizeUser,
+        KeyInit<HmacCore<D>>,
+        UpdateCore,
+        FixedOutputCore,
+        Reset,
+        AlgorithmName,
+        CoreProxy {
+        override val core: Any get() = this
 
-    override val bufferKind: Eager get() = Eager
+        override val bufferKind: Eager get() = Eager
 
-    override val keySize: Int get() = adapter.blockSize
+        override val keySize: Int get() = adapter.blockSize
 
-    override val blockSize: Int get() = adapter.blockSize
+        override val blockSize: Int get() = adapter.blockSize
 
-    override val outputSize: Int get() = adapter.outputSize
+        override val outputSize: Int get() = adapter.outputSize
 
-    override fun new(key: Key<*>): HmacCore<D> = newFromSlice(key).getOrThrow()
+        override fun new(key: Key<*>): HmacCore<D> = newFromSlice(key).getOrThrow()
 
-    override fun newFromSlice(key: ByteArray): Result<HmacCore<D>> = newFromSlice(type, key)
+        override fun newFromSlice(key: ByteArray): Result<HmacCore<D>> = newFromSlice(type, key)
 
-    override fun updateBlocks(blocks: List<Block<*>>) {
-        for (block in blocks) {
-            adapter.update(digest, block)
-        }
-    }
-
-    override fun finalizeFixedCore(
-        buffer: Buffer<*>,
-        out: Output<*>,
-    ) {
-        val remaining = buffer.remainingBytes()
-        if (remaining.isNotEmpty()) {
-            adapter.update(digest, remaining)
-        }
-        val innerHash = adapter.finalize(digest)
-        buffer.reset()
-        val outerHasher = adapter.create()
-        adapter.update(outerHasher, opadKey)
-        adapter.update(outerHasher, innerHash)
-        val finalHash = adapter.finalize(outerHasher)
-        finalHash.copyInto(out, 0, 0, minOf(out.size, finalHash.size))
-    }
-
-    override fun reset() {
-        adapter.reset(digest)
-        adapter.update(digest, ipadKey)
-    }
-
-    override fun writeAlgName(formatter: Formatter): FmtResult {
-        formatter.writeString("Hmac<").getOrThrow()
-        formatter.writeString(adapter.algName).getOrThrow()
-        return formatter.writeString(">")
-    }
-
-    companion object {
-        inline fun <reified D : Any> newFromSlice(key: ByteArray): Result<HmacCore<D>> = newFromSlice(D::class, key)
-
-        fun <D : Any> newFromSlice(
-            type: KClass<D>,
-            key: ByteArray,
-        ): Result<HmacCore<D>> {
-            val adapter = getAdapter(type) ?: return Result.failure(InvalidLength())
-            val derKey = getDerKey(key, adapter.blockSize, adapter.digest)
-            val ipadKey = derKey.copyOf()
-            for (i in ipadKey.indices) {
-                ipadKey[i] = (ipadKey[i].toInt() xor IPAD.toInt()).toByte()
+        override fun updateBlocks(blocks: List<Block<*>>) {
+            for (block in blocks) {
+                adapter.update(digest, block)
             }
-            val opadKey = derKey.copyOf()
-            for (i in opadKey.indices) {
-                opadKey[i] = (opadKey[i].toInt() xor OPAD.toInt()).toByte()
-            }
+        }
 
-            val digest = adapter.create()
+        override fun finalizeFixedCore(
+            buffer: Buffer<*>,
+            out: Output<*>,
+        ) {
+            val remaining = buffer.remainingBytes()
+            if (remaining.isNotEmpty()) {
+                adapter.update(digest, remaining)
+            }
+            val innerHash = adapter.finalize(digest)
+            buffer.reset()
+            val outerHasher = adapter.create()
+            adapter.update(outerHasher, opadKey)
+            adapter.update(outerHasher, innerHash)
+            val finalHash = adapter.finalize(outerHasher)
+            finalHash.copyInto(out, 0, 0, minOf(out.size, finalHash.size))
+        }
+
+        override fun reset() {
+            adapter.reset(digest)
             adapter.update(digest, ipadKey)
+        }
 
-            return Result.success(
-                HmacCore(
-                    type = type,
-                    adapter = adapter,
-                    opadKey = opadKey,
-                    ipadKey = ipadKey,
-                    digest = digest,
-                ),
-            )
+        override fun writeAlgName(formatter: Formatter): FmtResult {
+            formatter.writeString("Hmac<").getOrThrow()
+            formatter.writeString(adapter.algName).getOrThrow()
+            return formatter.writeString(">")
+        }
+
+        companion object {
+            inline fun <reified D : Any> newFromSlice(key: ByteArray): Result<HmacCore<D>> = newFromSlice(D::class, key)
+
+            fun <D : Any> newFromSlice(
+                type: KClass<D>,
+                key: ByteArray,
+            ): Result<HmacCore<D>> {
+                val adapter = getAdapter(type) ?: return Result.failure(InvalidLength())
+                val derKey = getDerKey(key, adapter.blockSize, adapter.digest)
+                val ipadKey = derKey.copyOf()
+                for (i in ipadKey.indices) {
+                    ipadKey[i] = (ipadKey[i].toInt() xor IPAD.toInt()).toByte()
+                }
+                val opadKey = derKey.copyOf()
+                for (i in opadKey.indices) {
+                    opadKey[i] = (opadKey[i].toInt() xor OPAD.toInt()).toByte()
+                }
+
+                val digest = adapter.create()
+                adapter.update(digest, ipadKey)
+
+                return Result.success(
+                    HmacCore(
+                        type = type,
+                        adapter = adapter,
+                        opadKey = opadKey,
+                        ipadKey = ipadKey,
+                        digest = digest,
+                    ),
+                )
+            }
         }
     }
-}
