@@ -1,4 +1,4 @@
-// port-lint: source src/lib.rs
+// port-lint: source lib.rs
 package io.github.kotlinmania.hmac
 
 import io.github.kotlinmania.digest.Digest
@@ -7,6 +7,9 @@ import kotlin.reflect.KClass
 internal const val IPAD: Byte = 0x36
 internal const val OPAD: Byte = 0x5C
 
+/**
+ * Derives the block-sized key by padding or hashing when key size exceeds block size.
+ */
 internal fun getDerKey(
     key: ByteArray,
     blockSize: Int,
@@ -43,6 +46,18 @@ internal val customAdapters: MutableMap<KClass<*>, HasherAdapter> = mutableMapOf
 
 /**
  * Registers a custom hasher adapter for use with [Hmac] and [SimpleHmac].
+ *
+ * Generic implementation of Hash-based Message Authentication Code (HMAC).
+ *
+ * @param type The KClass of the hasher/digest type.
+ * @param blockSize The block size in bytes of the underlying hash function.
+ * @param outputSize The output digest size in bytes.
+ * @param algName The algorithm name string for diagnostics.
+ * @param create Factory creating a new hasher instance.
+ * @param update Consumes byte array into hasher instance.
+ * @param finalize Finalizes and produces output digest bytes.
+ * @param reset Resets hasher state.
+ * @param digest One-shot digest convenience function.
  */
 @Suppress("UNCHECKED_CAST")
 fun <D : Any> registerHasher(

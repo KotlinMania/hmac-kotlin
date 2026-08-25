@@ -1,4 +1,4 @@
-// port-lint: source src/simple.rs
+// port-lint: source simple.rs
 package io.github.kotlinmania.hmac
 
 import io.github.kotlinmania.digest.BlockSizeUser
@@ -54,6 +54,18 @@ class SimpleHmac<D : Any>
         override fun new(key: Key<*>): SimpleHmac<D> = newFromSlice(key).getOrThrow()
 
         override fun newFromSlice(key: ByteArray): Result<SimpleHmac<D>> = newFromSlice(type, key)
+
+        fun clone(): SimpleHmac<D> {
+            val newDigest = adapter.create()
+            adapter.update(newDigest, ipadKey)
+            return SimpleHmac(
+                type = type,
+                adapter = adapter,
+                digest = newDigest,
+                opadKey = opadKey.copyOf(),
+                ipadKey = ipadKey.copyOf(),
+            )
+        }
 
         override fun update(data: ByteArray) {
             adapter.update(digest, data)
