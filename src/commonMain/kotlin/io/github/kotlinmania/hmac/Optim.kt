@@ -1,4 +1,4 @@
-// port-lint: source src/optim.rs
+// port-lint: source optim.rs
 package io.github.kotlinmania.hmac
 
 import io.github.kotlinmania.digest.Block
@@ -102,7 +102,7 @@ class Hmac<D : Any>
     }
 
 /**
- * Core HMAC implementation working over block-level operations.
+ * Generic core HMAC instance, which operates over blocks.
  */
 class HmacCore<D : Any>
     @PublishedApi
@@ -137,6 +137,18 @@ class HmacCore<D : Any>
 
         override fun newFromSlice(key: ByteArray): Result<HmacCore<D>> = newFromSlice(type, key)
 
+        fun clone(): HmacCore<D> {
+            val newDigest = adapter.create()
+            adapter.update(newDigest, ipadKey)
+            return HmacCore(
+                type = type,
+                adapter = adapter,
+                opadKey = opadKey.copyOf(),
+                ipadKey = ipadKey.copyOf(),
+                digest = newDigest,
+            )
+        }
+
         override fun updateBlocks(blocks: List<Block<*>>) {
             for (block in blocks) {
                 adapter.update(digest, block)
@@ -169,6 +181,12 @@ class HmacCore<D : Any>
             formatter.writeString("Hmac<").getOrThrow()
             formatter.writeString(adapter.algName).getOrThrow()
             return formatter.writeString(">")
+        }
+
+        fun fmt(formatter: Formatter): FmtResult {
+            formatter.writeString("HmacCore<").getOrThrow()
+            formatter.writeString(adapter.algName).getOrThrow()
+            return formatter.writeString("> { ... }")
         }
 
         companion object {
