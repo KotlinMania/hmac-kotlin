@@ -1,132 +1,164 @@
-// port-lint: source tests/mod.rs
+// port-lint: tests tests/mod.rs
 package io.github.kotlinmania.hmac
 
-import io.github.kotlinmania.digest.newMacTest
-import io.github.kotlinmania.digest.truncLeft
-import io.github.kotlinmania.md5.Md5
 import io.github.kotlinmania.sha1.Sha1
 import io.github.kotlinmania.sha2.Sha224
 import io.github.kotlinmania.sha2.Sha256
 import io.github.kotlinmania.sha2.Sha384
 import io.github.kotlinmania.sha2.Sha512
-import io.github.kotlinmania.streebog.Streebog256
-import io.github.kotlinmania.streebog.Streebog512
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 class ModTest {
-    // Test vectors from RFC 2104, plus wiki test
-    @Test
-    fun hmacMd5Rfc2104() {
-        newMacTest<Hmac<Md5>>("md5")
+    @BeforeTest
+    fun setUp() {
+        registerHasher(
+            type = Sha1::class,
+            blockSize = 64,
+            outputSize = 20,
+            algName = "Sha1",
+            create = { Sha1() },
+            update = { h, d -> h.update(d) },
+            finalize = { h -> h.finalize() },
+            reset = { h -> h.reset() },
+            digest = { d -> Sha1.digest(d) },
+        )
+        registerHasher(
+            type = Sha224::class,
+            blockSize = 64,
+            outputSize = 28,
+            algName = "Sha224",
+            create = { Sha224() },
+            update = { h, d -> h.update(d) },
+            finalize = { h -> h.finalize() },
+            reset = { h -> h.reset() },
+            digest = { d -> Sha224.digest(d) },
+        )
+        registerHasher(
+            type = Sha256::class,
+            blockSize = 64,
+            outputSize = 32,
+            algName = "Sha256",
+            create = { Sha256() },
+            update = { h, d -> h.update(d) },
+            finalize = { h -> h.finalize() },
+            reset = { h -> h.reset() },
+            digest = { d -> Sha256.digest(d) },
+        )
+        registerHasher(
+            type = Sha384::class,
+            blockSize = 128,
+            outputSize = 48,
+            algName = "Sha384",
+            create = { Sha384() },
+            update = { h, d -> h.update(d) },
+            finalize = { h -> h.finalize() },
+            reset = { h -> h.reset() },
+            digest = { d -> Sha384.digest(d) },
+        )
+        registerHasher(
+            type = Sha512::class,
+            blockSize = 128,
+            outputSize = 64,
+            algName = "Sha512",
+            create = { Sha512() },
+            update = { h, d -> h.update(d) },
+            finalize = { h -> h.finalize() },
+            reset = { h -> h.reset() },
+            digest = { d -> Sha512.digest(d) },
+        )
     }
 
-    @Test
-    fun hmacMd5Rfc2104Simple() {
-        newMacTest<SimpleHmac<Md5>>("md5")
-    }
+    // RFC 2104 (MD5) tests unported: md5 crate is not yet ported to KotlinMania
+    // test!(hmac_md5_rfc2104, "md5", Hmac<md5::Md5>);
+    // test!(hmac_md5_rfc2104_simple, "md5", SimpleHmac<md5::Md5>);
 
     // Test vectors from RFC 4231
     @Test
     fun hmacSha224Rfc4231() {
-        newMacTest<Hmac<Sha224>>("sha224")
+        runMacSuite(TestData.sha224, { Hmac.newFromSlice<Sha224>(it).getOrThrow() })
     }
 
     @Test
     fun hmacSha256Rfc4231() {
-        newMacTest<Hmac<Sha256>>("sha256")
+        runMacSuite(TestData.sha256, { Hmac.newFromSlice<Sha256>(it).getOrThrow() })
     }
 
     @Test
     fun hmacSha384Rfc4231() {
-        newMacTest<Hmac<Sha384>>("sha384")
+        runMacSuite(TestData.sha384, { Hmac.newFromSlice<Sha384>(it).getOrThrow() })
     }
 
     @Test
     fun hmacSha512Rfc4231() {
-        newMacTest<Hmac<Sha512>>("sha512")
+        runMacSuite(TestData.sha512, { Hmac.newFromSlice<Sha512>(it).getOrThrow() })
     }
 
     @Test
     fun hmacSha224Rfc4231Simple() {
-        newMacTest<SimpleHmac<Sha224>>("sha224")
+        runMacSuite(TestData.sha224, { SimpleHmac.newFromSlice<Sha224>(it).getOrThrow() })
     }
 
     @Test
     fun hmacSha256Rfc4231Simple() {
-        newMacTest<SimpleHmac<Sha256>>("sha256")
+        runMacSuite(TestData.sha256, { SimpleHmac.newFromSlice<Sha256>(it).getOrThrow() })
     }
 
     @Test
     fun hmacSha384Rfc4231Simple() {
-        newMacTest<SimpleHmac<Sha384>>("sha384")
+        runMacSuite(TestData.sha384, { SimpleHmac.newFromSlice<Sha384>(it).getOrThrow() })
     }
 
     @Test
     fun hmacSha512Rfc4231Simple() {
-        newMacTest<SimpleHmac<Sha512>>("sha512")
+        runMacSuite(TestData.sha512, { SimpleHmac.newFromSlice<Sha512>(it).getOrThrow() })
     }
 
-    // Test vectors from R 50.1.113-2016:
-    // https://tc26.ru/standard/rs/Р 50.1.113-2016.pdf
-    @Test
-    fun hmacStreebog256() {
-        newMacTest<Hmac<Streebog256>>("streebog256")
-    }
-
-    @Test
-    fun hmacStreebog512() {
-        newMacTest<Hmac<Streebog512>>("streebog512")
-    }
-
-    @Test
-    fun hmacStreebog256Simple() {
-        newMacTest<SimpleHmac<Streebog256>>("streebog256")
-    }
-
-    @Test
-    fun hmacStreebog512Simple() {
-        newMacTest<SimpleHmac<Streebog512>>("streebog512")
-    }
+    // R 50.1.113-2016 (Streebog) tests unported: streebog crate is not yet ported to KotlinMania
+    // test!(hmac_streebog256, "streebog256", Hmac<Streebog256>);
+    // test!(hmac_streebog512, "streebog512", Hmac<Streebog512>);
+    // test!(hmac_streebog256_simple, "streebog256", SimpleHmac<Streebog256>);
+    // test!(hmac_streebog512_simple, "streebog512", SimpleHmac<Streebog512>);
 
     // Tests from Project Wycheproof:
     // https://github.com/google/wycheproof
     @Test
     fun hmacSha1Wycheproof() {
-        newMacTest<Hmac<Sha1>>("wycheproof-sha1", ::truncLeft)
+        runMacSuite(TestData.wycheproofSha1, { Hmac.newFromSlice<Sha1>(it).getOrThrow() }, truncSide = "left")
     }
 
     @Test
     fun hmacSha256Wycheproof() {
-        newMacTest<Hmac<Sha256>>("wycheproof-sha256", ::truncLeft)
+        runMacSuite(TestData.wycheproofSha256, { Hmac.newFromSlice<Sha256>(it).getOrThrow() }, truncSide = "left")
     }
 
     @Test
     fun hmacSha384Wycheproof() {
-        newMacTest<Hmac<Sha384>>("wycheproof-sha384", ::truncLeft)
+        runMacSuite(TestData.wycheproofSha384, { Hmac.newFromSlice<Sha384>(it).getOrThrow() }, truncSide = "left")
     }
 
     @Test
     fun hmacSha512Wycheproof() {
-        newMacTest<Hmac<Sha512>>("wycheproof-sha512", ::truncLeft)
+        runMacSuite(TestData.wycheproofSha512, { Hmac.newFromSlice<Sha512>(it).getOrThrow() }, truncSide = "left")
     }
 
     @Test
     fun hmacSha1WycheproofSimple() {
-        newMacTest<SimpleHmac<Sha1>>("wycheproof-sha1", ::truncLeft)
+        runMacSuite(TestData.wycheproofSha1, { SimpleHmac.newFromSlice<Sha1>(it).getOrThrow() }, truncSide = "left")
     }
 
     @Test
     fun hmacSha256WycheproofSimple() {
-        newMacTest<SimpleHmac<Sha256>>("wycheproof-sha256", ::truncLeft)
+        runMacSuite(TestData.wycheproofSha256, { SimpleHmac.newFromSlice<Sha256>(it).getOrThrow() }, truncSide = "left")
     }
 
     @Test
     fun hmacSha384WycheproofSimple() {
-        newMacTest<SimpleHmac<Sha384>>("wycheproof-sha384", ::truncLeft)
+        runMacSuite(TestData.wycheproofSha384, { SimpleHmac.newFromSlice<Sha384>(it).getOrThrow() }, truncSide = "left")
     }
 
     @Test
     fun hmacSha512WycheproofSimple() {
-        newMacTest<SimpleHmac<Sha512>>("wycheproof-sha512", ::truncLeft)
+        runMacSuite(TestData.wycheproofSha512, { SimpleHmac.newFromSlice<Sha512>(it).getOrThrow() }, truncSide = "left")
     }
 }

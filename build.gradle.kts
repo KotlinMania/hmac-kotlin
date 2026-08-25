@@ -76,6 +76,16 @@ fun optionalTrimmedProperty(name: String): String? =
         .orNull
         ?.takeIf { it.isNotEmpty() }
 
+val commonTestBundleName = optionalTrimmedProperty("project.dependencies.commonTestBundle")
+val commonTestDependencyBundle =
+    commonTestBundleName?.let { bundleName ->
+        extensions
+            .getByType(VersionCatalogsExtension::class.java)
+            .named("libs")
+            .findBundle(bundleName)
+            .orElseThrow { GradleException("Missing libs bundle '$bundleName'") }
+    }
+
 val enabledFeatureNames = csvProperty("project.features")
 val benchmarkEnabled = "benchmark" in enabledFeatureNames
 val benchmarkTargetNames = csvProperty("project.benchmark.targets")
@@ -495,6 +505,7 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
+            commonTestDependencyBundle?.let { implementation(it) }
         }
         if (benchmarkEnabled) {
             val commonBenchmark = maybeCreate("commonBenchmark")
@@ -885,8 +896,7 @@ val publishToCentralPortal by tasks.registering {
 tasks.register("test") {
     group = "verification"
     description = "Runs the commonTest-backed KMP suite, Android host tests, and Swift Export smoke test."
-    dependsOn("allTests")
-    dependsOn("testAndroidHostTest")
+    dependsOn("hostTests")
     dependsOn("swiftExportSmokeTest")
 }
 
@@ -971,15 +981,22 @@ tasks.register("swiftExportSmokeTest") {
             }
         }
 
+        val cliTestingInterop = File("/Library/Developer/CommandLineTools/Library/Developer/usr/lib")
         execOperations
             .exec {
                 workingDir = layout.projectDirectory.dir("swift-test-harness").asFile
+                if (cliTestingInterop.exists()) {
+                    environment("DYLD_LIBRARY_PATH", cliTestingInterop.absolutePath)
+                }
                 commandLine("swift", "package", "reset")
             }.assertNormalExitValue()
 
         execOperations
             .exec {
                 workingDir = layout.projectDirectory.dir("swift-test-harness").asFile
+                if (cliTestingInterop.exists()) {
+                    environment("DYLD_LIBRARY_PATH", cliTestingInterop.absolutePath)
+                }
                 commandLine("swift", "test")
             }.assertNormalExitValue()
     }
