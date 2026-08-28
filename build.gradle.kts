@@ -448,6 +448,15 @@ kotlin {
     androidNativeArm64 { configureBenchmarkCompilation() }
     androidNativeX64 { configureBenchmarkCompilation() }
 
+    targets.withType<KotlinNativeTarget>().configureEach {
+        binaries.withType<org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable>().configureEach {
+            linkerOpts(
+                "-L${rootProject.file("../sha1-kotlin/build/lib/main/debug/macos/aarch64").absolutePath}",
+                "-L${rootProject.file("../sha1-kotlin/build/lib/main/release/macos/aarch64").absolutePath}",
+            )
+        }
+    }
+
     // Web
     js {
         configureBenchmarkCompilation()
