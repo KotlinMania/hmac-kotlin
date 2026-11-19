@@ -53,7 +53,7 @@ class SimpleHmac<D : Any>
 
         override fun new(key: Key<*>): SimpleHmac<D> = newFromSlice(key).getOrThrow()
 
-        override fun newFromSlice(key: ByteArray): Result<SimpleHmac<D>> = newFromSlice(type, key)
+        override fun newFromSlice(key: ByteArray): Result<SimpleHmac<D>> = Result.success(fromAdapter(type, adapter, key))
 
         fun clone(): SimpleHmac<D> {
             val newDigest = adapter.create()
@@ -146,6 +146,22 @@ class SimpleHmac<D : Any>
                 key: ByteArray,
             ): Result<SimpleHmac<D>> {
                 val adapter = getAdapter(type) ?: return Result.failure(InvalidLength())
+                return Result.success(fromAdapter(type, adapter, key))
+            }
+
+            fun fromDigest(
+                blockSize: Int,
+                outputSize: Int,
+                algName: String,
+                key: ByteArray,
+                digest: (ByteArray) -> ByteArray,
+            ): SimpleHmac<Any> = fromAdapter(Any::class, createBufferedAdapter(blockSize, outputSize, algName, digest), key)
+
+            internal fun <D : Any> fromAdapter(
+                type: KClass<D>,
+                adapter: HasherAdapter,
+                key: ByteArray,
+            ): SimpleHmac<D> {
                 val derKey = getDerKey(key, adapter.blockSize, adapter.digest)
                 val ipadKey = derKey.copyOf()
                 for (index in ipadKey.indices) {
@@ -159,14 +175,12 @@ class SimpleHmac<D : Any>
                     opadKey[index] = (opadKey[index].toInt() xor OPAD.toInt()).toByte()
                 }
 
-                return Result.success(
-                    SimpleHmac(
-                        type = type,
-                        adapter = adapter,
-                        digest = digest,
-                        opadKey = opadKey,
-                        ipadKey = ipadKey,
-                    ),
+                return SimpleHmac(
+                    type = type,
+                    adapter = adapter,
+                    digest = digest,
+                    opadKey = opadKey,
+                    ipadKey = ipadKey,
                 )
             }
         }

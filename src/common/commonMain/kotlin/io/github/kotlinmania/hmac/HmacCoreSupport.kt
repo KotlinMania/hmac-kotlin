@@ -1,4 +1,3 @@
-// port-lint: source lib.rs
 package io.github.kotlinmania.hmac
 
 import io.github.kotlinmania.digest.Digest
@@ -40,6 +39,59 @@ internal class HasherAdapter(
     val reset: (Any) -> Unit,
     val digest: (ByteArray) -> ByteArray,
 )
+
+internal class BufferedDigestState {
+    private val chunks = mutableListOf<ByteArray>()
+
+    fun append(data: ByteArray) {
+        if (data.isNotEmpty()) {
+            chunks.add(data.copyOf())
+        }
+    }
+
+    fun toByteArray(): ByteArray {
+        if (chunks.isEmpty()) {
+            return ByteArray(0)
+        }
+        val totalSize = chunks.sumOf { it.size }
+        val result = ByteArray(totalSize)
+        var offset = 0
+        for (chunk in chunks) {
+            chunk.copyInto(result, offset)
+            offset += chunk.size
+        }
+        return result
+    }
+
+    fun clear() {
+        chunks.clear()
+    }
+}
+
+internal fun createBufferedAdapter(
+    blockSize: Int,
+    outputSize: Int,
+    algName: String,
+    digest: (ByteArray) -> ByteArray,
+): HasherAdapter {
+    require(blockSize > 0) { "blockSize must be positive: $blockSize" }
+    require(outputSize > 0) { "outputSize must be positive: $outputSize" }
+    return HasherAdapter(
+        blockSize = blockSize,
+        outputSize = outputSize,
+        algName = algName,
+        create = { BufferedDigestState() },
+        update = { state, data -> (state as BufferedDigestState).append(data) },
+        finalize = { state ->
+            val buffered = state as BufferedDigestState
+            val out = digest(buffered.toByteArray())
+            buffered.clear()
+            out
+        },
+        reset = { state -> (state as BufferedDigestState).clear() },
+        digest = digest,
+    )
+}
 
 @PublishedApi
 internal val customAdapters: MutableMap<KClass<*>, HasherAdapter> = mutableMapOf()

@@ -98,6 +98,14 @@ class Hmac<D : Any>
                 type: KClass<D>,
                 key: ByteArray,
             ): Result<Hmac<D>> = HmacCore.newFromSlice(type, key).map { Hmac(CoreWrapper.fromCore(it)) }
+
+            fun fromDigest(
+                blockSize: Int,
+                outputSize: Int,
+                algName: String,
+                key: ByteArray,
+                digest: (ByteArray) -> ByteArray,
+            ): Hmac<Any> = Hmac(CoreWrapper.fromCore(HmacCore.fromDigest(blockSize, outputSize, algName, key, digest)))
         }
     }
 
@@ -135,7 +143,7 @@ class HmacCore<D : Any>
 
         override fun new(key: Key<*>): HmacCore<D> = newFromSlice(key).getOrThrow()
 
-        override fun newFromSlice(key: ByteArray): Result<HmacCore<D>> = newFromSlice(type, key)
+        override fun newFromSlice(key: ByteArray): Result<HmacCore<D>> = Result.success(fromAdapter(type, adapter, key))
 
         fun clone(): HmacCore<D> {
             val newDigest = adapter.create()
@@ -197,6 +205,22 @@ class HmacCore<D : Any>
                 key: ByteArray,
             ): Result<HmacCore<D>> {
                 val adapter = getAdapter(type) ?: return Result.failure(InvalidLength())
+                return Result.success(fromAdapter(type, adapter, key))
+            }
+
+            fun fromDigest(
+                blockSize: Int,
+                outputSize: Int,
+                algName: String,
+                key: ByteArray,
+                digest: (ByteArray) -> ByteArray,
+            ): HmacCore<Any> = fromAdapter(Any::class, createBufferedAdapter(blockSize, outputSize, algName, digest), key)
+
+            internal fun <D : Any> fromAdapter(
+                type: KClass<D>,
+                adapter: HasherAdapter,
+                key: ByteArray,
+            ): HmacCore<D> {
                 val derKey = getDerKey(key, adapter.blockSize, adapter.digest)
                 val ipadKey = derKey.copyOf()
                 for (i in ipadKey.indices) {
@@ -210,14 +234,12 @@ class HmacCore<D : Any>
                 val digest = adapter.create()
                 adapter.update(digest, ipadKey)
 
-                return Result.success(
-                    HmacCore(
-                        type = type,
-                        adapter = adapter,
-                        opadKey = opadKey,
-                        ipadKey = ipadKey,
-                        digest = digest,
-                    ),
+                return HmacCore(
+                    type = type,
+                    adapter = adapter,
+                    opadKey = opadKey,
+                    ipadKey = ipadKey,
+                    digest = digest,
                 )
             }
         }

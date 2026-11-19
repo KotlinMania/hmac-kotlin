@@ -8,6 +8,7 @@ import io.github.kotlinmania.sha2.Sha384
 import io.github.kotlinmania.sha2.Sha512
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 
 class ModTest {
     @BeforeTest
@@ -160,5 +161,32 @@ class ModTest {
     @Test
     fun hmacSha512WycheproofSimple() {
         runMacSuite(TestData.wycheproofSha512, { SimpleHmac.newFromSlice<Sha512>(it).getOrThrow() }, truncSide = "left")
+    }
+
+    @Test
+    fun fromDigestRfc4231TestCase2() {
+        val key = "Jefe".encodeToByteArray()
+        val part1 = "what do ya want ".encodeToByteArray()
+        val part2 = "for nothing?".encodeToByteArray()
+        val expected =
+            "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
+                .chunked(2)
+                .map { it.toInt(16).toByte() }
+                .toByteArray()
+
+        val hmac = Hmac.fromDigest(64, 32, "Sha256", key, Sha256::digest)
+        hmac.update(part1)
+        hmac.update(part2)
+        assertContentEquals(expected, hmac.finalizeFixed())
+        hmac.reset()
+        hmac.update(part1 + part2)
+        assertContentEquals(expected, hmac.finalizeFixedReset())
+
+        val simple = SimpleHmac.fromDigest(64, 32, "Sha256", key, Sha256::digest)
+        val cloned = simple.clone()
+        simple.update("ignored".encodeToByteArray())
+        cloned.update(part1)
+        cloned.update(part2)
+        assertContentEquals(expected, cloned.finalizeFixed())
     }
 }

@@ -42,7 +42,7 @@ internal class BlobbyReader(
     fun parse(): List<TestVector> {
         val numShared = readVarint()
         val shared = mutableListOf<ByteArray>()
-        for (i in 0 until numShared) {
+        repeat(numShared) {
             val len = readVarint()
             shared.add(data.copyOfRange(pos, pos + len))
             pos += len
