@@ -7,7 +7,7 @@
     "lang": "rust"
   },
   "target": {
-    "path": "src/commonMain/kotlin/io/github/kotlinmania/hmac",
+    "path": "src/common/commonMain/kotlin/io/github/kotlinmania/hmac",
     "lang": "kotlin"
   },
   "checks": {
