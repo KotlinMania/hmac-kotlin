@@ -4,14 +4,14 @@ Based on AST analysis, here are the concrete next steps.
 
 ## Summary
 
-- **Files Present:** 3/3 (100.0%)
-- **Function parity:** 16/16 matched (target 44) — 100.0%
-- **Class/type parity:** 3/9 matched (target 4) — 33.3%
-- **Combined symbol parity:** 19/25 matched (target 48) — 76.0%
-- **Average inline-code cosine:** 0.14 (function body across 3 matched files)
-- **Average documentation cosine:** 0.74 (doc text across 3 matched files)
+- **Files Present:** 2/3 (66.7%)
+- **Function parity:** 15/15 matched (target 45) — 100.0%
+- **Class/type parity:** 7/9 matched (target 7) — 77.8%
+- **Combined symbol parity:** 22/24 matched (target 52) — 91.7%
+- **Average inline-code cosine:** 0.29 (function body across 2 matched files)
+- **Average documentation cosine:** 0.56 (doc text across 2 matched files)
 - **Cheat-zeroed Files:** 0
-- **Critical Issues:** 3 files with <0.60 function similarity
+- **Critical Issues:** 2 files with <0.60 function similarity
 - **Needs Review:** 0 files with 0.60-0.84 function similarity
 - **Excellent:** 0 files with >=0.85 function similarity
 
@@ -29,37 +29,26 @@ No missing high-value files detected.
 
 Every matched file is listed below with function and type symbol parity.
 
-### 1. optim
+### 1. simple
 
-- **Target:** `hmac.Optim`
-- **Similarity:** 0.09
+- **Target:** `Simple`
+- **Similarity:** 0.36
 - **Dependents:** 0
-- **Priority Score:** 41409.1
-- **Functions:** 8/8 matched (target 24)
-- **Missing functions:** _none_
-- **Types:** 2/6 matched (target 2)
-- **Missing types:** `BufferKind`, `KeySize`, `BlockSize`, `OutputSize`
-
-### 2. simple
-
-- **Target:** `hmac.Simple`
-- **Similarity:** 0.23
-- **Dependents:** 0
-- **Priority Score:** 21007.7
+- **Priority Score:** 21006.4
 - **Functions:** 7/7 matched (target 17)
 - **Missing functions:** _none_
 - **Types:** 1/3 matched (target 1)
 - **Missing types:** `KeySize`, `OutputSize`
 
-### 3. lib
+### 2. optim
 
-- **Target:** `hmac.Lib`
-- **Similarity:** 0.12
+- **Target:** `Optim`
+- **Similarity:** 0.22
 - **Dependents:** 0
-- **Priority Score:** 108.8
-- **Functions:** 1/1 matched (target 3)
+- **Priority Score:** 1407.8
+- **Functions:** 8/8 matched (target 28)
 - **Missing functions:** _none_
-- **Types:** 0/0 matched (target 1)
+- **Types:** 6/6 matched
 - **Missing types:** _none_
 
 ## Success Criteria
@@ -70,4 +59,17 @@ For each file to be considered "complete":
 - All tests ported
 - Documentation ported
 - port-lint header present
+
+## Reexport / Wiring Modules
+
+These files match `reexport_modules` patterns in `.ast_distance_config.json`. They are filtered out of
+normal priority and missing-file ladders because they are wiring
+modules, not direct logic ports. Consult them for call-site routing;
+do not treat them as the next implementation target by default.
+
+### Missing
+
+| Source | Expected target | Deps | Source path | Expected path |
+|--------|-----------------|------|-------------|---------------|
+| `lib` | `Lib` | 0 | `lib.rs` | `Lib.kt` |
 

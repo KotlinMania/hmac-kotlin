@@ -1,11 +1,12 @@
 // port-lint: source simple.rs
 package io.github.kotlinmania.hmac
 
+import io.github.kotlinmania.digest.Block
 import io.github.kotlinmania.digest.BlockSizeUser
 import io.github.kotlinmania.digest.CtOutput
+import io.github.kotlinmania.digest.Digest
 import io.github.kotlinmania.digest.FixedOutput
 import io.github.kotlinmania.digest.FixedOutputReset
-import io.github.kotlinmania.digest.InvalidLength
 import io.github.kotlinmania.digest.Key
 import io.github.kotlinmania.digest.KeyInit
 import io.github.kotlinmania.digest.KeySizeUser
@@ -15,173 +16,176 @@ import io.github.kotlinmania.digest.Output
 import io.github.kotlinmania.digest.OutputSizeUser
 import io.github.kotlinmania.digest.Reset
 import io.github.kotlinmania.digest.Update
+import io.github.kotlinmania.digest.asSlice
 import io.github.kotlinmania.digest.fmt.FmtResult
 import io.github.kotlinmania.digest.fmt.Formatter
-import kotlin.reflect.KClass
 
 /**
  * Simplified HMAC instance able to operate over hash functions
  * which do not expose block-level API and hash functions which
- * process blocks lazily.
+ * process blocks lazily (e.g. BLAKE2).
  */
-class SimpleHmac<D : Any>
-    @PublishedApi
-    internal constructor(
-        private val type: KClass<D>,
-        private val adapter: HasherAdapter,
-        private var digest: Any,
-        private var opadKey: ByteArray,
-        private var ipadKey: ByteArray,
-    ) : Mac,
-        KeySizeUser,
-        BlockSizeUser,
-        MacMarker,
-        KeyInit<SimpleHmac<D>>,
-        Update,
-        OutputSizeUser,
-        FixedOutput,
-        Reset,
-        FixedOutputReset {
-        override val keySize: Int
-            get() = adapter.blockSize
+class SimpleHmac<D : Any> internal constructor(
+    private var digest: Digest,
+    private val opadKey: Block<D>,
+    private val ipadKey: Block<D>,
+    private val newDigest: () -> Digest,
+    private val cloneDigest: (Digest) -> Digest,
+) : Mac,
+    KeySizeUser,
+    BlockSizeUser,
+    MacMarker,
+    KeyInit<SimpleHmac<D>>,
+    Update,
+    OutputSizeUser,
+    FixedOutput,
+    Reset,
+    FixedOutputReset {
+    override val keySize: KeySize get() = opadKey.size
 
-        override val blockSize: Int
-            get() = adapter.blockSize
+    override val blockSize: BlockSize get() = opadKey.size
 
-        override val outputSize: Int
-            get() = adapter.outputSize
+    override val outputSize: OutputSize get() = digest.outputSize
 
-        override fun new(key: Key<*>): SimpleHmac<D> = newFromSlice(key).getOrThrow()
+    override fun new(key: Key<*>): SimpleHmac<D> = newFromSlice(key.asSlice()).getOrThrow()
 
-        override fun newFromSlice(key: ByteArray): Result<SimpleHmac<D>> = Result.success(fromAdapter(type, adapter, key))
+    override fun newFromSlice(key: ByteArray): Result<SimpleHmac<D>> =
+        buildFromSlice(key, opadKey.size, newDigest, cloneDigest)
 
-        fun clone(): SimpleHmac<D> {
-            val newDigest = adapter.create()
-            adapter.update(newDigest, ipadKey)
-            return SimpleHmac(
-                type = type,
-                adapter = adapter,
-                digest = newDigest,
-                opadKey = opadKey.copyOf(),
-                ipadKey = ipadKey.copyOf(),
-            )
+    /** Returns an independent copy preserving any compressed or buffered hash state. */
+    fun clone(): SimpleHmac<D> =
+        SimpleHmac(
+            digest = cloneDigest(digest),
+            opadKey = opadKey.copyOf(),
+            ipadKey = ipadKey.copyOf(),
+            newDigest = newDigest,
+            cloneDigest = cloneDigest,
+        )
+
+    override fun update(data: ByteArray) {
+        digest.update(data)
+    }
+
+    override fun chain(data: ByteArray): SimpleHmac<D> {
+        update(data)
+        return this
+    }
+
+    override fun chainUpdate(data: ByteArray): SimpleHmac<D> {
+        update(data)
+        return this
+    }
+
+    override fun finalize(): CtOutput<*> = CtOutput.new<SimpleHmac<D>>(finalizeFixed())
+
+    override fun finalizeReset(): CtOutput<*> = CtOutput.new<SimpleHmac<D>>(finalizeFixedReset())
+
+    override fun finalizeInto(out: Output<*>) {
+        val h = newDigest()
+        h.update(opadKey)
+        h.update(digest.finalize())
+        h.finalizeInto(out)
+    }
+
+    override fun reset() {
+        digest.reset()
+        digest.update(ipadKey)
+    }
+
+    override fun finalizeIntoReset(out: Output<*>) {
+        val h = newDigest()
+        h.update(opadKey)
+        h.update(digest.finalizeReset())
+        digest.update(ipadKey)
+        h.finalizeInto(out)
+    }
+
+    /** Formats a debug representation matching `SimpleHmac { digest: ..., .. }`. */
+    fun fmt(formatter: Formatter): FmtResult =
+        formatter
+            .debugStruct("SimpleHmac")
+            .field("digest", digest)
+            .field("..", "..")
+            .finish()
+
+    override fun toString(): String {
+        val formatter = Formatter()
+        fmt(formatter)
+        return formatter.toString()
+    }
+
+    companion object {
+        /** Creates a new [SimpleHmac] instance from [key]. */
+        fun <D> new(
+            key: ByteArray,
+            newDigest: () -> D,
+            cloneDigest: (D) -> D,
+        ): SimpleHmac<D> where D : Digest, D : BlockSizeUser =
+            newFromSlice(key, newDigest, cloneDigest).getOrThrow()
+
+        /** Creates a new [SimpleHmac] instance from a byte slice [key]. */
+        fun <D> newFromSlice(
+            key: ByteArray,
+            newDigest: () -> D,
+            cloneDigest: (D) -> D,
+        ): Result<SimpleHmac<D>> where D : Digest, D : BlockSizeUser {
+            val proto = newDigest()
+            val typedClone: (Digest) -> Digest = { d ->
+                @Suppress("UNCHECKED_CAST")
+                cloneDigest(d as D)
+            }
+            return buildFromSlice(key, proto.blockSize, newDigest, typedClone)
         }
 
-        override fun update(data: ByteArray) {
-            adapter.update(digest, data)
-        }
+        private fun <D : Any> buildFromSlice(
+            key: ByteArray,
+            blockSize: Int,
+            newDigest: () -> Digest,
+            cloneDigest: (Digest) -> Digest,
+        ): Result<SimpleHmac<D>> {
+            val derKey =
+                getDerKey<D>(key, blockSize) { data ->
+                    val h = newDigest()
+                    h.update(data)
+                    h.finalize()
+                }
+            val ipadKey = derKey.copyOf()
+            for (idx in ipadKey.indices) {
+                ipadKey[idx] = (ipadKey[idx].toInt() xor IPAD.toInt()).toByte()
+            }
+            val digest = newDigest()
+            digest.update(ipadKey)
 
-        override fun chain(data: ByteArray): SimpleHmac<D> {
-            update(data)
-            return this
-        }
-
-        override fun chainUpdate(data: ByteArray): SimpleHmac<D> {
-            update(data)
-            return this
-        }
-
-        override fun finalize(): CtOutput<*> {
-            val out = ByteArray(outputSize)
-            finalizeInto(out)
-            return CtOutput.new<SimpleHmac<D>>(out)
-        }
-
-        override fun finalizeReset(): CtOutput<*> {
-            val out = ByteArray(outputSize)
-            finalizeIntoReset(out)
-            return CtOutput.new<SimpleHmac<D>>(out)
-        }
-
-        override fun finalizeFixed(): ByteArray {
-            val out = ByteArray(outputSize)
-            finalizeInto(out)
-            return out
-        }
-
-        override fun finalizeFixedReset(): ByteArray {
-            val out = ByteArray(outputSize)
-            finalizeIntoReset(out)
-            return out
-        }
-
-        override fun finalizeInto(out: Output<*>) {
-            val h = adapter.create()
-            adapter.update(h, opadKey)
-            val innerHash = adapter.finalize(digest)
-            adapter.update(h, innerHash)
-            val res = adapter.finalize(h)
-            res.copyInto(out, 0, 0, minOf(out.size, res.size))
-        }
-
-        override fun reset() {
-            adapter.reset(digest)
-            adapter.update(digest, ipadKey)
-        }
-
-        override fun finalizeIntoReset(out: Output<*>) {
-            val h = adapter.create()
-            adapter.update(h, opadKey)
-            val innerHash = adapter.finalize(digest)
-            adapter.update(h, innerHash)
-            val res = adapter.finalize(h)
-            res.copyInto(out, 0, 0, minOf(out.size, res.size))
-            reset()
-        }
-
-        fun fmt(formatter: Formatter): FmtResult =
-            formatter
-                .debugStruct("SimpleHmac")
-                .field("digest", digest)
-                .field("..", "..")
-                .finish()
-
-        companion object {
-            inline fun <reified D : Any> new(key: ByteArray): SimpleHmac<D> = newFromSlice<D>(key).getOrThrow()
-
-            inline fun <reified D : Any> newFromSlice(key: ByteArray): Result<SimpleHmac<D>> = newFromSlice(D::class, key)
-
-            fun <D : Any> newFromSlice(
-                type: KClass<D>,
-                key: ByteArray,
-            ): Result<SimpleHmac<D>> {
-                val adapter = getAdapter(type) ?: return Result.failure(InvalidLength())
-                return Result.success(fromAdapter(type, adapter, key))
+            val opadKey = derKey
+            for (idx in opadKey.indices) {
+                opadKey[idx] = (opadKey[idx].toInt() xor OPAD.toInt()).toByte()
             }
 
-            fun fromDigest(
-                blockSize: Int,
-                outputSize: Int,
-                algName: String,
-                key: ByteArray,
-                digest: (ByteArray) -> ByteArray,
-            ): SimpleHmac<Any> = fromAdapter(Any::class, createBufferedAdapter(blockSize, outputSize, algName, digest), key)
-
-            internal fun <D : Any> fromAdapter(
-                type: KClass<D>,
-                adapter: HasherAdapter,
-                key: ByteArray,
-            ): SimpleHmac<D> {
-                val derKey = getDerKey(key, adapter.blockSize, adapter.digest)
-                val ipadKey = derKey.copyOf()
-                for (index in ipadKey.indices) {
-                    ipadKey[index] = (ipadKey[index].toInt() xor IPAD.toInt()).toByte()
-                }
-                val digest = adapter.create()
-                adapter.update(digest, ipadKey)
-
-                val opadKey = derKey.copyOf()
-                for (index in opadKey.indices) {
-                    opadKey[index] = (opadKey[index].toInt() xor OPAD.toInt()).toByte()
-                }
-
-                return SimpleHmac(
-                    type = type,
-                    adapter = adapter,
+            return Result.success(
+                SimpleHmac(
                     digest = digest,
                     opadKey = opadKey,
                     ipadKey = ipadKey,
-                )
-            }
+                    newDigest = newDigest,
+                    cloneDigest = cloneDigest,
+                ),
+            )
+        }
+
+        /** Creates a concrete [SimpleHmac] backed by a caller-supplied one-shot [digest] closure. */
+        fun fromDigest(
+            blockSize: Int,
+            outputSize: Int,
+            algName: String,
+            key: ByteArray,
+            digest: (ByteArray) -> ByteArray,
+        ): SimpleHmac<ClosureDigest> {
+            require(algName.isNotEmpty()) { "algName must not be empty" }
+            return newFromSlice(
+                key = key,
+                newDigest = { ClosureDigest(blockSize, outputSize, digest) },
+                cloneDigest = { it.copy() },
+            ).getOrThrow()
         }
     }
+}

@@ -36,8 +36,8 @@ private func sha256(_ input: ExportedKotlinPackages.kotlin.ByteArray) -> Exporte
 
 @Suite("Hmac Export Tests")
 struct HmacExportTests {
-    @Test("Hmac SHA-256 matches RFC 4231 Test Case 2 and resets cleanly")
-    func hmacSha256Rfc4231TestCase2() throws {
+    @Test("Hmac SHA-256 matches RFC 4231 Test Case 2, resets, and clones mid-stream")
+    func hmacSha256Rfc4231TestCase2AndClone() throws {
         let key = makeKotlinByteArray(Array("Jefe".utf8))
         let msgPart1 = makeKotlinByteArray(Array("what do ya want ".utf8))
         let msgPart2 = makeKotlinByteArray(Array("for nothing?".utf8))
@@ -54,7 +54,9 @@ struct HmacExportTests {
         #expect(mac.outputSize == 32)
 
         mac.update(data: msgPart1)
-        let chained = mac.chain(data: msgPart2)
+        let midCloned = mac.clone()
+        mac.update(data: makeKotlinByteArray(Array("ignored".utf8)))
+        let chained = midCloned.chain(data: msgPart2)
         #expect(toSwiftBytes(chained.finalizeFixed()) == expected)
 
         mac.reset()
@@ -63,10 +65,11 @@ struct HmacExportTests {
         #expect(toSwiftBytes(mac.finalizeFixedReset()) == expected)
     }
 
-    @Test("SimpleHmac SHA-256 matches RFC 4231 Test Case 1 and clones independently")
+    @Test("SimpleHmac SHA-256 matches RFC 4231 Test Case 1 and clones mid-stream")
     func simpleHmacSha256Rfc4231TestCase1AndClone() throws {
         let key = makeKotlinByteArray([UInt8](repeating: 0x0B, count: 20))
-        let data = makeKotlinByteArray(Array("Hi There".utf8))
+        let part1 = makeKotlinByteArray(Array("Hi ".utf8))
+        let part2 = makeKotlinByteArray(Array("There".utf8))
         let expected = hexBytes("b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7")
 
         let mac = SimpleHmac.Companion.shared.fromDigest(
@@ -80,9 +83,10 @@ struct HmacExportTests {
         #expect(mac.blockSize == 64)
         #expect(mac.outputSize == 32)
 
+        mac.update(data: part1)
         let cloned = mac.clone()
         mac.update(data: makeKotlinByteArray(Array("ignored".utf8)))
-        cloned.update(data: data)
+        cloned.update(data: part2)
         #expect(toSwiftBytes(cloned.finalizeFixed()) == expected)
     }
 
